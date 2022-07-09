@@ -22,6 +22,7 @@ class Config:
     root: Optional[Path]
     cache_file: Path
     cache: dict[Path, Node]
+    verbose: bool
     def tops(self):
         if self.root:
             if self.root in self.cache:
@@ -40,26 +41,29 @@ def _make_cfg_singleton():
     return set_cfg, get_cfg
 set_sfg, get_cfg = _make_cfg_singleton()    
 
-def out_msg(str:str):
-    pass
+def out_msg(str:str, verbose:bool = None):
+    if verbose == None:
+        verbose = get_cfg().verbose
+    if verbose:
+        print(str)
 
 def fatal(str:str):
-    print(str)
+    out_msg(str, True)
     exit(1)
 
-DEFAULT_CACHE_FILE = "idx_cache.pickle"
+DEFAULT_CACHE_FILE = Path.home()/".idx_cache.pickle"
 @app.callback()
-def load(root:Optional[Path] = None, cache_filename:str = DEFAULT_CACHE_FILE):
-    cache_file = Path(cache_filename)
+def load(root:Optional[Path] = None, cache_file:Path = DEFAULT_CACHE_FILE, verbose:bool = False):
     if cache_file.exists():
-        out_msg(f"loading cache from {cache_file}.")
+        out_msg(f"loading cache from {cache_file}.", verbose)
         with open(cache_file, "rb") as fd:
             cache = pickle.load(fd)
     else:
+        out_msg(f"cache file {cache_file} not found.", verbose)
         cache = {}
     if root and root not in cache:
-        out_msg(f"{root} not found in cache.")
-    set_sfg(Config(root, cache_file, cache))
+        out_msg(f"{root} not found in cache.", verbose)
+    set_sfg(Config(root, cache_file, cache, verbose))
 
 def write_cache():
     out_msg(f"storing cache in {get_cfg().cache_file}.")
