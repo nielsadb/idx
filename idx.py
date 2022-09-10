@@ -85,13 +85,24 @@ def write_cache():
 
 
 @app.command()
-def index(do_stat:bool = False):
+def index(do_stat: bool = False):
     root = Path(get_cfg().root).resolve()
     if not root.exists():
         fatal(f"{root} does not exist")
     out_msg(f"starting scan of {root}.")
     top = scan(root, do_stat)
     get_cfg().cache[root] = top
+    write_cache()
+
+
+@app.command()
+def update(only: Optional[Path] = None, do_stat: bool = False):
+    only = only.resolve() if only else None
+    for root in get_cfg().cache.keys():
+        if not only or root == only:
+            out_msg(f"starting scan of {root}.")
+            top = scan(root, do_stat)
+            get_cfg().cache[root] = top
     write_cache()
 
 
