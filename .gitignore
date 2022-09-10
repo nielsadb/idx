@@ -1,3 +1,4 @@
-idx_cache.pickle
+*.pickle
 search
+output.txt
 __pycache__
