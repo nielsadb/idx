@@ -1,4 +1,3 @@
-
 import re
 import sys
 import typer
@@ -43,6 +42,7 @@ def _make_cfg_singleton():
 
     def get_cfg() -> Config:
         return _cfg[0]
+
     return set_cfg, get_cfg
 
 
@@ -61,11 +61,15 @@ def fatal(str: str):
     exit(1)
 
 
-DEFAULT_CACHE_FILE = Path.home()/".idx_cache.pickle"
+DEFAULT_CACHE_FILE = Path.home() / ".idx_cache.pickle"
 
 
 @app.callback()
-def load(root: Optional[Path] = None, cache_file: Path = DEFAULT_CACHE_FILE, verbose: bool = False):
+def load(
+    root: Optional[Path] = None,
+    cache_file: Path = DEFAULT_CACHE_FILE,
+    verbose: bool = False,
+):
     if cache_file.exists():
         out_msg(f"loading cache from {cache_file}.", verbose)
         with open(cache_file, "rb") as fd:
@@ -111,7 +115,8 @@ def show():
     def visit(node: Node, indent: int):
         tags = ", ".join(node.tags)
         print(f"{indent*'  '}{node.path.name} {f'[{tags}]' if tags else ''}")
-        return indent+1
+        return indent + 1
+
     for top in get_cfg().tops():
         top.walk(visit, 0)
 
@@ -141,7 +146,8 @@ def search(regexps: list[str], md: int = 1, ic: bool = True):
                     if all(tag in lower_tags for tag in tags_cnd):
                         key = "".join(re.findall("\w", term.lower()))
                         results.append((key, term, node))
-            return depth+1
+            return depth + 1
+
         top.walk(visit, 0)
 
     results = []
@@ -149,8 +155,23 @@ def search(regexps: list[str], md: int = 1, ic: bool = True):
         search_top(top, results)
     print(f"[dim]{'-'*80}[/dim]")
     for (_, term, node) in sorted(results, key=operator.itemgetter(0)):
+
+        def format_tag(tag):
+            match tag:
+                case "Red":
+                    return "🔴"
+                case "Green":
+                    return "🟢"
+                case "Blue":
+                    return "🔵"
+                case "Purple":
+                    return "🟣"
+                case _:
+                    return "@" + tag
+
+        tagstr = " ".join(map(format_tag, node.tags))
         link = f"file://{urllib.parse.quote(node.path.as_posix())}"
-        print(f"[bold]*[/bold] [link={link}]{term}[/link]")
+        print(f"[bold]*[/bold] [link={link}]{term}[/link] [dim]{tagstr}[/dim]")
     print(f"[dim]{len(results)} results[/dim]")
 
 
