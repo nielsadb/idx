@@ -171,7 +171,7 @@ def search(regexps: list[str], md: int = 1, ic: bool = True):
 
         tagstr = " ".join(map(format_tag, node.tags))
         link = f"file://{urllib.parse.quote(node.path.as_posix())}"
-        print(f"[bold]*[/bold] [link={link}]{term}[/link] [dim]{tagstr}[/dim]")
+        print(f"[dim]-[/dim][link={link}]{term}[/link] [dim]{tagstr}[/dim]")
     print(f"[dim]{len(results)} results[/dim]")
 
 
