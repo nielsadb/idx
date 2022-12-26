@@ -141,7 +141,14 @@ def search(regexps: list[str], md: int = 1, ic: bool = True, ns : bool = False):
                 return "🟣"
             case _:
                 return "@" + tag
-    
+
+    @dataclass
+    class Result:
+        term: str
+        node: None
+        top: Node
+        depth: int
+
     name_cnd = []
     tags_cnd = []
     for r in regexps:
@@ -150,36 +157,38 @@ def search(regexps: list[str], md: int = 1, ic: bool = True, ns : bool = False):
         else:
             name_cnd.append(re.compile(r, re.IGNORECASE if ic else 0))
 
-    def search_top(top: Node, results):
+    def search_top(top: Node, results: list[Result]):
         def visit(node: Node, depth):
             if not node.children and depth >= md:
                 term = "/".join(node.path.relative_to(top.path).parts[md:])
                 if all(r.search(term) for r in name_cnd):
                     lower_tags = set(tag.lower() for tag in node.tags)
                     if all(tag in lower_tags for tag in tags_cnd):
-                        results.append((term, node))
+                        results.append(Result(term, node, top, depth))
             return depth + 1
 
         top.walk(visit, 0)
 
-    results = []
+    results: list[Result] = []
     for top in get_cfg().tops():
         search_top(top, results)
 
-    def sort_key(t):
-        term, _ = t
+    def sort_key(result:Result):
         if ns:
-            if m := re.search("\.(\d\d)\.(\d\d)\.(\d\d)\.", term):
-                return "".join(m[0]) + term
-            return ".00.00.00." + term
+            if m := re.search("\.(\d\d)\.(\d\d)\.(\d\d)\.", result.term):
+                return "".join(m[0]) + result.term
+            return ".00.00.00." + result.term
         else:
-            return "".join(re.findall("\w", term.lower()))
+            return "".join(re.findall("\w", result.term.lower()))
 
     print(f"[dim]{'-'*80}[/dim]")
-    for (term, node) in sorted(results, key=sort_key):
-        tagstr = " ".join(map(format_tag, node.tags))
-        link = f"file://{urllib.parse.quote(node.path.as_posix())}"
-        print(f"[dim]-[/dim][link={link}]{term}[/link] [dim]{tagstr}[/dim]")
+    for result in sorted(results, key=sort_key):
+        tagstr = " ".join(map(format_tag, result.node.tags))
+        tagsep = " " if result.node.tags else ""
+        link = f"file://{urllib.parse.quote(result.node.path.as_posix())}"
+        topl = result.top.path.parts[-1][0]
+        print(f"[dim]-[/dim][link={link}]{result.term}[/link] [dim]{tagstr}[/dim]{tagsep}[purple]{topl}[/purple]")
+
     print(f"[dim]{len(results)} results[/dim]")
 
 
