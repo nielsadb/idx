@@ -128,7 +128,20 @@ def cached():
 
 
 @app.command()
-def search(regexps: list[str], md: int = 1, ic: bool = True):
+def search(regexps: list[str], md: int = 1, ic: bool = True, ns : bool = False):
+    def format_tag(tag):
+        match tag:
+            case "Red":
+                return "🔴"
+            case "Green":
+                return "🟢"
+            case "Blue":
+                return "🔵"
+            case "Purple":
+                return "🟣"
+            case _:
+                return "@" + tag
+    
     name_cnd = []
     tags_cnd = []
     for r in regexps:
@@ -144,8 +157,7 @@ def search(regexps: list[str], md: int = 1, ic: bool = True):
                 if all(r.search(term) for r in name_cnd):
                     lower_tags = set(tag.lower() for tag in node.tags)
                     if all(tag in lower_tags for tag in tags_cnd):
-                        key = "".join(re.findall("\w", term.lower()))
-                        results.append((key, term, node))
+                        results.append((term, node))
             return depth + 1
 
         top.walk(visit, 0)
@@ -153,22 +165,16 @@ def search(regexps: list[str], md: int = 1, ic: bool = True):
     results = []
     for top in get_cfg().tops():
         search_top(top, results)
+
+    def sort_key(t):
+        term, _ = t
+        if ns:
+            return "".join(re.findall("\d", term.lower()))
+        else:
+            return "".join(re.findall("\w", term.lower()))
+
     print(f"[dim]{'-'*80}[/dim]")
-    for (_, term, node) in sorted(results, key=operator.itemgetter(0)):
-
-        def format_tag(tag):
-            match tag:
-                case "Red":
-                    return "🔴"
-                case "Green":
-                    return "🟢"
-                case "Blue":
-                    return "🔵"
-                case "Purple":
-                    return "🟣"
-                case _:
-                    return "@" + tag
-
+    for (term, node) in sorted(results, key=sort_key):
         tagstr = " ".join(map(format_tag, node.tags))
         link = f"file://{urllib.parse.quote(node.path.as_posix())}"
         print(f"[dim]-[/dim][link={link}]{term}[/link] [dim]{tagstr}[/dim]")
