@@ -128,7 +128,7 @@ def cached():
 
 
 @app.command()
-def search(regexps: list[str], md: int = 1, ic: bool = True, ns : bool = False):
+def search(regexps: list[str], md: int = 1, ic: bool = True, ns: bool = False):
     def format_tag(tag):
         match tag:
             case "Red":
@@ -173,7 +173,7 @@ def search(regexps: list[str], md: int = 1, ic: bool = True, ns : bool = False):
     for top in get_cfg().tops():
         search_top(top, results)
 
-    def sort_key(result:Result):
+    def sort_key(result: Result):
         if ns:
             if m := re.search("\.(\d\d)\.(\d\d)\.(\d\d)\.", result.term):
                 return "".join(m[0]) + result.term
@@ -187,7 +187,9 @@ def search(regexps: list[str], md: int = 1, ic: bool = True, ns : bool = False):
         tagsep = " " if result.node.tags else ""
         link = f"file://{urllib.parse.quote(result.node.path.as_posix())}"
         topl = result.top.path.parts[-1][0]
-        print(f"[dim]-[/dim][link={link}]{result.term}[/link] [dim]{tagstr}[/dim]{tagsep}[purple]{topl}[/purple]")
+        print(
+            f"[dim]-[/dim][link={link}]{result.term}[/link] [dim]{tagstr}[/dim]{tagsep}[purple]{topl}[/purple]"
+        )
 
     print(f"[dim]{len(results)} results[/dim]")
 
