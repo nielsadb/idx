@@ -169,7 +169,9 @@ def search(regexps: list[str], md: int = 1, ic: bool = True, ns : bool = False):
     def sort_key(t):
         term, _ = t
         if ns:
-            return "".join(re.findall("\d", term.lower()))
+            if m := re.search("\.(\d\d)\.(\d\d)\.(\d\d)\.", term):
+                return "".join(m[0]) + term
+            return ".00.00.00." + term
         else:
             return "".join(re.findall("\w", term.lower()))
 
