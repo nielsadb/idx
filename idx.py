@@ -82,9 +82,9 @@ def load(
     set_sfg(Config(root, cache_file, cache, verbose))
 
 
-def write_cache():
-    out_msg(f"storing cache in {get_cfg().cache_file}.")
-    with open(get_cfg().cache_file, "wb") as fd:
+def write_cache(out_file: Path):
+    out_msg(f"storing cache in {out_file}.")
+    with open(out_file, "wb") as fd:
         pickle.dump(get_cfg().cache, fd)
 
 
@@ -96,18 +96,23 @@ def index(do_stat: bool = False):
     out_msg(f"starting scan of {root}.")
     top = scan(root, do_stat)
     get_cfg().cache[root] = top
-    write_cache()
+    write_cache(get_cfg().cache_file)
 
 
 @app.command()
-def update(only: Optional[Path] = None, do_stat: bool = False):
+def rescan(only: Optional[Path] = None, do_stat: bool = False):
     only = only.resolve() if only else None
     for root in get_cfg().cache.keys():
         if not only or root == only:
             out_msg(f"starting scan of {root}.")
             top = scan(root, do_stat)
             get_cfg().cache[root] = top
-    write_cache()
+    write_cache(get_cfg().cache_file)
+
+
+@app.command()
+def dump(file_name: Path):
+    write_cache(file_name)
 
 
 @app.command()
