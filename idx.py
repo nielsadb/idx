@@ -153,7 +153,7 @@ def cached():
 
 
 @app.command()
-def search(regexps: list[str], md: int = 1, ic: bool = True, ns: bool = False):
+def search(regexps: list[str], md: int = 1, ic: bool = True, ns: bool = True):
     def format_tag(tag):
         match tag:
             case "Red":
