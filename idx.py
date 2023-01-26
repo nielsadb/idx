@@ -115,6 +115,26 @@ def dump(file_name: Path):
     write_cache(file_name)
 
 
+# --- 2023-01-19 20:21:30
+# python idx.py --verbose rescan --do-stat
+#   1.49s user
+#   3.57s system
+#   2% cpu
+#   2:52.89 total
+# --- 2023-01-19 20:34:34
+# python idx.py --verbose rescan --do-stat
+#   1.60s user
+#   3.69s system 
+#   2% cpu
+#   3:16.22 total
+
+@app.command()
+def simulate_update(older_dump: Path):
+    with open(older_dump, "rb") as fd:
+        older: dict[Path, Node] = pickle.load(fd)
+    current = get_cfg().cache
+
+
 @app.command()
 def show():
     def visit(node: Node, indent: int):
