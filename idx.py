@@ -154,13 +154,17 @@ def cached():
         print(f"* {root}")
 
 
+
 @app.command()
 def search(
     regexps: list[str],
-    mindepth: int = 0,
-    ignorecase: bool = True,
-    datesort: bool = True,
-    includejunk: bool = False,
+    *,
+    min_depth: int = 0,
+    ignore_case: bool = True,
+    date_sort: bool = True,
+    include_junk: bool = False,
+    show_dir: bool = False,
+    compact_dir: bool = False
 ):
     def format_tag(tag):
         match tag:
@@ -192,14 +196,14 @@ def search(
         if r.startswith("@"):
             tags_cnd.append(r[1:])
         else:
-            name_cnd.append(re.compile(r, re.IGNORECASE if ignorecase else 0))
+            name_cnd.append(re.compile(r, re.IGNORECASE if ignore_case else 0))
 
     def search_top(top: Node, results: list[Result]):
         def visit(node: Node, depth):
             if (
                 not node.children
-                and depth >= mindepth
-                and (includejunk or not is_junk(node))
+                and depth >= min_depth
+                and (include_junk or not is_junk(node))
             ):
                 result = Result(node, top)
                 if all(r.search(result.term()) for r in name_cnd):
@@ -215,7 +219,7 @@ def search(
         search_top(top, results)
 
     def sort_key(result: Result):
-        if datesort:
+        if date_sort:
             if m := re.search("\.(\d\d)\.(\d\d)\.(\d\d)\.", result.term()):
                 return "".join(m[0]) + result.term()
             return ".00.00.00." + result.term()
@@ -226,7 +230,13 @@ def search(
     for result in sorted(results, key=sort_key):
         tagstr = " ".join(map(format_tag, result.node.tags))
         tagsep = " " if result.node.tags else ""
-        dirstr = "/".join(result.parts()[:-1])
+        if show_dir:
+            if compact_dir:
+                dirstr = "/".join(p[0] for p in result.parts()[:-1])
+            else:
+                dirstr = "/".join(result.parts()[:-1])
+        else:
+            dirstr = ""
         dirsep = "/" if dirstr else ""
         link = f"file://{urllib.parse.quote(result.node.path.as_posix())}"
         topl = result.top.path.parts[-1][0]
