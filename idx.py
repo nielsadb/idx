@@ -9,6 +9,7 @@ import operator
 from typing import Optional
 from pathlib import Path
 from dixpy import Node, scan
+from junk import is_junk
 from dataclasses import dataclass
 from rich import print
 
@@ -89,23 +90,23 @@ def write_cache(out_file: Path):
 
 
 @app.command()
-def index(do_stat: bool = False):
+def index():
     root = Path(get_cfg().root).resolve()
     if not root.exists():
         fatal(f"{root} does not exist")
     out_msg(f"starting scan of {root}.")
-    top = scan(root, do_stat)
+    top = scan(root)
     get_cfg().cache[root] = top
     write_cache(get_cfg().cache_file)
 
 
 @app.command()
-def rescan(only: Optional[Path] = None, do_stat: bool = False):
+def rescan(only: Optional[Path] = None):
     only = only.resolve() if only else None
     for root in get_cfg().cache.keys():
         if not only or root == only:
             out_msg(f"starting scan of {root}.")
-            top = scan(root, do_stat)
+            top = scan(root)
             get_cfg().cache[root] = top
     write_cache(get_cfg().cache_file)
 
@@ -124,9 +125,10 @@ def dump(file_name: Path):
 # --- 2023-01-19 20:34:34
 # python idx.py --verbose rescan --do-stat
 #   1.60s user
-#   3.69s system 
+#   3.69s system
 #   2% cpu
 #   3:16.22 total
+
 
 @app.command()
 def simulate_update(older_dump: Path):
@@ -153,7 +155,13 @@ def cached():
 
 
 @app.command()
-def search(regexps: list[str], md: int = 1, ic: bool = True, ns: bool = True):
+def search(
+    regexps: list[str],
+    mindepth: int = 0,
+    ignorecase: bool = True,
+    datesort: bool = True,
+    includejunk: bool = False,
+):
     def format_tag(tag):
         match tag:
             case "Red":
@@ -169,10 +177,14 @@ def search(regexps: list[str], md: int = 1, ic: bool = True, ns: bool = True):
 
     @dataclass
     class Result:
-        term: str
-        node: None
+        node: Node
         top: Node
-        depth: int
+
+        def parts(self):
+            return self.node.path.relative_to(self.top.path).parts
+
+        def term(self):
+            return "/".join(self.parts())
 
     name_cnd = []
     tags_cnd = []
@@ -180,16 +192,20 @@ def search(regexps: list[str], md: int = 1, ic: bool = True, ns: bool = True):
         if r.startswith("@"):
             tags_cnd.append(r[1:])
         else:
-            name_cnd.append(re.compile(r, re.IGNORECASE if ic else 0))
+            name_cnd.append(re.compile(r, re.IGNORECASE if ignorecase else 0))
 
     def search_top(top: Node, results: list[Result]):
         def visit(node: Node, depth):
-            if not node.children and depth >= md:
-                term = "/".join(node.path.relative_to(top.path).parts[md:])
-                if all(r.search(term) for r in name_cnd):
+            if (
+                not node.children
+                and depth >= mindepth
+                and (includejunk or not is_junk(node))
+            ):
+                result = Result(node, top)
+                if all(r.search(result.term()) for r in name_cnd):
                     lower_tags = set(tag.lower() for tag in node.tags)
                     if all(tag in lower_tags for tag in tags_cnd):
-                        results.append(Result(term, node, top, depth))
+                        results.append(result)
             return depth + 1
 
         top.walk(visit, 0)
@@ -199,21 +215,23 @@ def search(regexps: list[str], md: int = 1, ic: bool = True, ns: bool = True):
         search_top(top, results)
 
     def sort_key(result: Result):
-        if ns:
-            if m := re.search("\.(\d\d)\.(\d\d)\.(\d\d)\.", result.term):
-                return "".join(m[0]) + result.term
-            return ".00.00.00." + result.term
+        if datesort:
+            if m := re.search("\.(\d\d)\.(\d\d)\.(\d\d)\.", result.term()):
+                return "".join(m[0]) + result.term()
+            return ".00.00.00." + result.term()
         else:
-            return "".join(re.findall("\w", result.term.lower()))
+            return "".join(re.findall("\w", result.term()))
 
     print(f"[dim]{'-'*80}[/dim]")
     for result in sorted(results, key=sort_key):
         tagstr = " ".join(map(format_tag, result.node.tags))
         tagsep = " " if result.node.tags else ""
+        dirstr = "/".join(result.parts()[:-1])
+        dirsep = "/" if dirstr else ""
         link = f"file://{urllib.parse.quote(result.node.path.as_posix())}"
         topl = result.top.path.parts[-1][0]
         print(
-            f"[dim]-[/dim][link={link}]{result.term}[/link] [dim]{tagstr}[/dim]{tagsep}[purple]{topl}[/purple]"
+            f"[dim]-[/dim][link={link}][dim]{dirstr}{dirsep}[/dim]{result.parts()[-1]}[/link] [dim]{tagstr}[/dim]{tagsep}[purple]{topl}[/purple]"
         )
 
     print(f"[dim]{len(results)} results[/dim]")
